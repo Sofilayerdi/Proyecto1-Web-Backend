@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -22,8 +23,20 @@ type Serie struct {
 
 func listarSeries(w http.ResponseWriter, r *http.Request) {
 
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit == 0 {
+		limit = 2
+	}
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page == 0 {
+		page = 1
+	}
+
+	offset := limit * (page - 1)
+
 	//obtener las series de la base de datos
-	rows, err := db.Query("SELECT id, name, current_ep, total_ep, img FROM series")
+	rows, err := db.Query("SELECT id, name, current_ep, total_ep, img FROM series LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		http.Error(w, "Error al obtener las series", http.StatusInternalServerError)
 		return
@@ -76,6 +89,16 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.Name == "" || s.CurrentEpisode < 0 || s.TotalEpisodes < 0 || s.Img == "" {
+		http.Error(w, "Datos incompletos", http.StatusBadRequest)
+		return
+	}
+
+	if s.CurrentEpisode > s.TotalEpisodes {
+		http.Error(w, "Episodio actual debe ser menor o igual al total", http.StatusBadRequest)
+		return
+	}
+
 	//insertar a la base de datos
 	db.Exec(
 		"INSERT INTO series (name, current_ep, total_ep, img) VALUES ($1, $2, $3, $4)",
@@ -98,6 +121,16 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
 		http.Error(w, "Contenido inválido", http.StatusBadRequest)
+		return
+	}
+
+	if s.Name == "" || s.CurrentEpisode < 0 || s.TotalEpisodes < 0 || s.Img == "" {
+		http.Error(w, "Datos incompletos", http.StatusBadRequest)
+		return
+	}
+
+	if s.CurrentEpisode > s.TotalEpisodes {
+		http.Error(w, "Episodio actual debe ser menor o igual al total", http.StatusBadRequest)
 		return
 	}
 
@@ -142,7 +175,7 @@ func eliminarSerie(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	w.WriteHeader(http.StatusNoContent)
