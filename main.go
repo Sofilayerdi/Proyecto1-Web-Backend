@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "modernc.org/sqlite"
 )
 
 var db *sql.DB
@@ -18,14 +18,14 @@ type Serie struct {
 	Name           string `json:"name"`
 	CurrentEpisode int    `json:"current_ep"`
 	TotalEpisodes  int    `json:"total_ep"`
-	Img            string `json:"img"`
+	Img            string `json:"img_url"`
 }
 
 func listarSeries(w http.ResponseWriter, r *http.Request) {
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {
-		limit = 2
+		limit = 10
 	}
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -36,7 +36,7 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 	offset := limit * (page - 1)
 
 	//obtener las series de la base de datos
-	rows, err := db.Query("SELECT id, name, current_ep, total_ep, img FROM series LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := db.Query("SELECT id, name, current_ep, total_ep, img_url FROM series LIMIT ? OFFSET ?", limit, offset)
 	if err != nil {
 		http.Error(w, "Error al obtener las series", http.StatusInternalServerError)
 		return
@@ -47,8 +47,13 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 	var series []Serie
 	for rows.Next() {
 		var s Serie
-		rows.Scan(&s.ID, &s.Name, &s.CurrentEpisode, &s.TotalEpisodes, &s.Img)
+		err := rows.Scan(&s.ID, &s.Name, &s.CurrentEpisode, &s.TotalEpisodes, &s.Img)
+		if err != nil {
+			http.Error(w, "Error leyendo datos", http.StatusInternalServerError)
+			return
+		}
 		series = append(series, s)
+
 	}
 
 	//respuesta JSON con CORS
@@ -62,7 +67,7 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 func verSerie(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	row := db.QueryRow("SELECT id, name, current_ep, total_ep, img FROM series WHERE id = $1", id)
+	row := db.QueryRow("SELECT id, name, current_ep, total_ep, img_url FROM series WHERE id = ?", id)
 
 	var s Serie
 	err := row.Scan(&s.ID, &s.Name, &s.CurrentEpisode, &s.TotalEpisodes, &s.Img)
@@ -89,7 +94,7 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.Name == "" || s.CurrentEpisode < 0 || s.TotalEpisodes < 0 || s.Img == "" {
+	if s.Name == "" || s.CurrentEpisode <= 0 || s.TotalEpisodes <= 0 || s.Img == "" {
 		http.Error(w, "Datos incompletos", http.StatusBadRequest)
 		return
 	}
@@ -100,10 +105,17 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//insertar a la base de datos
-	db.Exec(
-		"INSERT INTO series (name, current_ep, total_ep, img) VALUES ($1, $2, $3, $4)",
+	result, err := db.Exec(
+		"INSERT INTO series (name, current_ep, total_ep, img_url) VALUES (?,?,?,?)",
 		s.Name, s.CurrentEpisode, s.TotalEpisodes, s.Img,
 	)
+	if err != nil {
+		http.Error(w, "Error al crear la serie", http.StatusInternalServerError)
+		return
+	}
+
+	id, _ := result.LastInsertId()
+	s.ID = int(id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -111,6 +123,8 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(s)
 }
 
 func editarSerie(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +138,7 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.Name == "" || s.CurrentEpisode < 0 || s.TotalEpisodes < 0 || s.Img == "" {
+	if s.Name == "" || s.CurrentEpisode <= 0 || s.TotalEpisodes <= 0 || s.Img == "" {
 		http.Error(w, "Datos incompletos", http.StatusBadRequest)
 		return
 	}
@@ -135,12 +149,12 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row, err := db.Exec(
-		"UPDATE series SET name = $1, current_ep = $2, total_ep = $3, img = $4 WHERE id = $5",
+		"UPDATE series SET name = ?, current_ep = ?, total_ep = ?, img_url = ? WHERE id = ?",
 		s.Name, s.CurrentEpisode, s.TotalEpisodes, s.Img, id,
 	)
 
 	if err != nil {
-		http.Error(w, "Error al eliminar la serie", http.StatusInternalServerError)
+		http.Error(w, "Error al actualizar la serie", http.StatusInternalServerError)
 		return
 	}
 
@@ -161,7 +175,7 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 func eliminarSerie(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	row, err := db.Exec("DELETE FROM series WHERE id = $1", id)
+	row, err := db.Exec("DELETE FROM series WHERE id = ?", id)
 	if err != nil {
 		http.Error(w, "Error al eliminar la serie", http.StatusInternalServerError)
 		return
@@ -184,7 +198,7 @@ func eliminarSerie(w http.ResponseWriter, r *http.Request) {
 func main() {
 	//Inicializar database
 	var err error
-	db, err = sql.Open("pgx", "postgres://postgres:Duquesa0@localhost:5432/series?sslmode=disable")
+	db, err = sql.Open("sqlite", "series.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -197,6 +211,13 @@ func main() {
 	r.Post("/series", crearSerie)
 	r.Put("/series/{id}", editarSerie)
 	r.Delete("/series/{id}", eliminarSerie)
+
+	r.Options("/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusOK)
+	})
 
 	log.Print("listening to port 8000")
 
