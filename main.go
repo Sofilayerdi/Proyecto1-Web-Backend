@@ -18,7 +18,7 @@ type Serie struct {
 	Name           string `json:"name"`
 	CurrentEpisode int    `json:"current_ep"`
 	TotalEpisodes  int    `json:"total_ep"`
-	Img            string `json:"img_url"`
+	Img            string `json:"image_url"`
 }
 
 func listarSeries(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +36,7 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 	offset := limit * (page - 1)
 
 	//obtener las series de la base de datos
-	rows, err := db.Query("SELECT id, name, current_ep, total_ep, img_url FROM series LIMIT ? OFFSET ?", limit, offset)
+	rows, err := db.Query("SELECT id, name, current_ep, total_ep, image_url FROM series LIMIT ? OFFSET ?;", limit, offset)
 	if err != nil {
 		http.Error(w, "Error al obtener las series", http.StatusInternalServerError)
 		return
@@ -59,7 +59,7 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 	//respuesta JSON con CORS
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	json.NewEncoder(w).Encode(series)
 }
@@ -67,7 +67,7 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 func verSerie(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	row := db.QueryRow("SELECT id, name, current_ep, total_ep, img_url FROM series WHERE id = ?", id)
+	row := db.QueryRow("SELECT id, name, current_ep, total_ep, image_url FROM series WHERE id = ?;", id)
 
 	var s Serie
 	err := row.Scan(&s.ID, &s.Name, &s.CurrentEpisode, &s.TotalEpisodes, &s.Img)
@@ -78,7 +78,7 @@ func verSerie(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	json.NewEncoder(w).Encode(s)
@@ -106,7 +106,7 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 
 	//insertar a la base de datos
 	result, err := db.Exec(
-		"INSERT INTO series (name, current_ep, total_ep, img_url) VALUES (?,?,?,?)",
+		"INSERT INTO series (name, current_ep, total_ep, image_url) VALUES (?,?,?,?);",
 		s.Name, s.CurrentEpisode, s.TotalEpisodes, s.Img,
 	)
 	if err != nil {
@@ -119,7 +119,7 @@ func crearSerie(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	w.WriteHeader(http.StatusCreated)
@@ -149,7 +149,7 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row, err := db.Exec(
-		"UPDATE series SET name = ?, current_ep = ?, total_ep = ?, img_url = ? WHERE id = ?",
+		"UPDATE series SET name = ?, current_ep = ?, total_ep = ?, image_url = ? WHERE id = ?;",
 		s.Name, s.CurrentEpisode, s.TotalEpisodes, s.Img, id,
 	)
 
@@ -166,7 +166,7 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	w.WriteHeader(http.StatusOK)
@@ -175,7 +175,7 @@ func editarSerie(w http.ResponseWriter, r *http.Request) {
 func eliminarSerie(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	row, err := db.Exec("DELETE FROM series WHERE id = ?", id)
+	row, err := db.Exec("DELETE FROM series WHERE id = ?;", id)
 	if err != nil {
 		http.Error(w, "Error al eliminar la serie", http.StatusInternalServerError)
 		return
@@ -214,7 +214,7 @@ func main() {
 
 	r.Options("/*", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.WriteHeader(http.StatusOK)
 	})
