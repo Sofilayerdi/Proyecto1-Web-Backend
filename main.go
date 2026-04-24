@@ -42,7 +42,9 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 
 	offset := limit * (page - 1)
 
-	rows, err := db.Query("SELECT id, name, current_ep, total_ep, image_url FROM series LIMIT ? OFFSET ?;", limit, offset)
+	q := "%" + r.URL.Query().Get("q") + "%"
+
+	rows, err := db.Query("SELECT id, name, current_ep, total_ep, image_url FROM series WHERE name LIKE ? LIMIT ? OFFSET ?;", q, limit, offset)
 	if err != nil {
 		http.Error(w, "Error al obtener las series", http.StatusInternalServerError)
 		return
