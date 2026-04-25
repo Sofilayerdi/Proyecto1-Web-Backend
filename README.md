@@ -46,7 +46,7 @@ CORS está configurado para permitir cualquier origen (`*`), necesario porque el
 - Paginación ?page= y ?limit=
 - Búsqueda ?q=
 - Ordenamiento ?sort= y ?order=asc|desc
-- Exportar la lista de series a Excel (.xlsx)
+- Exportar la lista de series a Excel (.xlsx) 
 
 ## Reflexión
 Go me pareció bastante sencillo de usar y entender para construir el servidor HTTP. Me gustó que levantar una API REST fuera tan directo, especialmente usando net/http y Chi, que facilitan mucho el manejo de rutas. Al inicio me costó un poco entender bien cómo usarlos en la separación cliente-servidor, pero cuando logré comprender la estructura del código, todo empezó a fluir de forma más limpia. También aprendí sobre CORS, al principio fue confuso y no tenía claro dónde configurarlo, pero luego entendí que todo se resolvía ajustando correctamente los headers para permitir que el cliente consumiera la API. Si usaría Go de nuevo para backends donde la performance sea importante.
