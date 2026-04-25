@@ -44,7 +44,24 @@ func listarSeries(w http.ResponseWriter, r *http.Request) {
 
 	q := "%" + r.URL.Query().Get("q") + "%"
 
-	rows, err := db.Query("SELECT id, name, current_ep, total_ep, image_url FROM series WHERE name LIKE ? LIMIT ? OFFSET ?;", q, limit, offset)
+	sortCol := r.URL.Query().Get("sort")
+	validCols := map[string]string{
+		"name":       "name",
+		"current_ep": "current_ep",
+		"total_ep":   "total_ep",
+	}
+	col, ok := validCols[sortCol]
+	if !ok {
+		col = "id"
+	}
+
+	order := r.URL.Query().Get("order")
+	if order != "desc" {
+		order = "asc"
+	}
+
+	query := "SELECT id, name, current_ep, total_ep, image_url FROM series WHERE name LIKE ? ORDER BY " + col + " " + order + " LIMIT ? OFFSET ?;"
+	rows, err := db.Query(query, q, limit, offset)
 	if err != nil {
 		http.Error(w, "Error al obtener las series", http.StatusInternalServerError)
 		return
