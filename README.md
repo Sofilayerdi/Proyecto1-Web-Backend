@@ -3,7 +3,9 @@
 API REST para gestionar series de televisión, construida con Go y SQLite.
 
 **Frontend:** https://github.com/Sofilayerdi/Proyecto1-Web-Frontend.git
+
 **App en producción:** https://seriestracker-231929.onrender.com
+
 **Servidor backend:** https://series-tracker-rk1z.onrender.com
 
 ## Tecnologías
